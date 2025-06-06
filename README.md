@@ -429,7 +429,3 @@ Una vez completado el Requisito 2, puedes proceder con:
 - **Requisito 4**: Pruebas de alta disponibilidad
 
 ---
-
-**Autor**: Kristell Suazo  
-**Fecha**: Junio 2025  
-**Versión**: 1.0
