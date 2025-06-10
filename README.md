@@ -10,18 +10,7 @@ Este requisito procesa un corpus de 680 discursos históricos, genera embeddings
 4. Almacenar en MongoDB con replicación
 5. Validar la integridad de los datos
 
-## 🚀 Instalación Rápida
-
-### Opción 1: Script Automatizado
-```bash
-# Dar permisos de ejecución
-chmod +x setup_requisito2.sh
-
-# Ejecutar el script de configuración
-./setup_requisito2.sh
-```
-
-### Opción 2: Instalación Manual
+### Instalación 
 
 #### 1. Verificar Requisito 1
 ```bash
