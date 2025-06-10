@@ -5,9 +5,6 @@ Vectorización e Inserción en MongoDB
 
 Este script procesa discursos históricos, genera embeddings semánticos
 y los almacena en MongoDB configurado con Replica Set.
-
-Autor: Kristell Suazo
-Fecha: Junio 2025
 """
 
 import os
@@ -26,7 +23,6 @@ from pymongo import MongoClient, WriteConcern, errors
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from tqdm import tqdm
 
-# Configuración de logging mejorada
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -57,7 +53,6 @@ class CorpusProcessor:
         self.collection = None
         self.model = None
         
-        # Estadísticas de procesamiento
         self.stats = {
             'procesados': 0,
             'errores': 0,
@@ -66,31 +61,26 @@ class CorpusProcessor:
             'archivos_error': []
         }
         
-        # Configuración de conexión basada en Requisito 1
         self.MONGO_PORTS = [3001, 3002, 3003]
         self.REPLICA_SET = "rs"
-        self.DATABASE_NAME = "Política"  # Con tilde, como en Requisito 1
+        self.DATABASE_NAME = "Política"  
         self.COLLECTION_NAME = "Discursos"
         
-        # Inicializar componentes
         self._initialize_components()
     
     def _initialize_components(self):
         """Inicializa modelo de embeddings y conexión a MongoDB"""
-        # Cargar modelo de embeddings
         logger.info("🤖 Cargando modelo de embeddings...")
         try:
             self.model = SentenceTransformer('all-MiniLM-L6-v2')
             logger.info("✅ Modelo cargado exitosamente")
             
-            # Información del modelo
             logger.info(f"   - Dimensión de embeddings: {self.model.get_sentence_embedding_dimension()}")
             
         except Exception as e:
             logger.error(f"❌ Error cargando modelo: {e}")
             raise
         
-        # Conectar a MongoDB
         self._connect_to_mongodb()
     
     def _connect_to_mongodb(self):
@@ -100,7 +90,6 @@ class CorpusProcessor:
         """
         logger.info("🔌 Conectando a MongoDB Replica Set...")
         
-        # Estrategia 1: Conexión directa al puerto primario
         for port in self.MONGO_PORTS:
             try:
                 logger.info(f"   Intentando puerto {port}...")
@@ -109,7 +98,6 @@ class CorpusProcessor:
                     serverSelectionTimeoutMS=5000,
                     directConnection=True
                 )
-                # Verificar conexión
                 self.client.admin.command('ping')
                 logger.info(f"✅ Conexión exitosa a MongoDB (puerto {port})")
                 break
@@ -118,7 +106,6 @@ class CorpusProcessor:
                 logger.warning(f"   ⚠️  No se pudo conectar al puerto {port}")
                 continue
         
-        # Estrategia 2: Si no funcionó, intentar con Replica Set completo
         if not self.client:
             try:
                 logger.info("   Intentando conexión a Replica Set completo...")
@@ -134,29 +121,24 @@ class CorpusProcessor:
             except Exception as e:
                 logger.error(f"❌ No se pudo conectar a MongoDB: {e}")
                 raise ConnectionError("No se pudo establecer conexión con MongoDB. Verifica que el Requisito 1 esté funcionando.")
-        
-        # Configurar base de datos y colección
+            
         self.db = self.client[self.DATABASE_NAME]
         self.collection = self.db[self.COLLECTION_NAME]
         
-        # Mostrar información de conexión
         self._show_connection_info()
     
     def _show_connection_info(self):
         """Muestra información sobre la conexión establecida"""
         try:
-            # Información del servidor
             server_info = self.client.server_info()
             logger.info(f"📊 Información del servidor MongoDB:")
             logger.info(f"   - Versión: {server_info.get('version', 'desconocida')}")
             
-            # Información del Replica Set
             if self.client.admin.command('isMaster').get('setName'):
                 status = self.client.admin.command('replSetGetStatus')
                 logger.info(f"   - Replica Set: {status['set']}")
                 logger.info(f"   - Miembros activos: {len(status['members'])}")
                 
-                # Mostrar estado de cada miembro
                 for member in status['members']:
                     state = member['stateStr']
                     name = member['name']
@@ -188,10 +170,8 @@ class CorpusProcessor:
             Lista de floats representando el embedding
         """
         try:
-            # Generar embedding sin mostrar barra de progreso individual
             embedding = self.model.encode(text, show_progress_bar=False)
             
-            # Convertir a lista de Python (no numpy array)
             return embedding.tolist()
             
         except Exception as e:
@@ -209,7 +189,6 @@ class CorpusProcessor:
             Diccionario con la estructura del documento o None si hay error
         """
         try:
-            # Leer archivo con manejo de encodings
             texto = None
             encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
             
@@ -227,13 +206,10 @@ class CorpusProcessor:
             if not texto:
                 raise ValueError("Archivo vacío")
             
-            # Generar hash SHA-256
             doc_id = self.generate_sha256(texto)
             
-            # Generar embedding
             embedding = self.generate_embedding(texto)
             
-            # Crear documento siguiendo EXACTAMENTE la estructura del enunciado
             documento = {
                 "_id": doc_id,
                 "texto": texto,
@@ -259,7 +235,6 @@ class CorpusProcessor:
         logger.info("🚀 INICIANDO PROCESAMIENTO DEL CORPUS")
         logger.info("="*60)
         
-        # Obtener lista de archivos .txt
         txt_files = list(self.corpus_path.glob('*.txt'))
         total_files = len(txt_files)
         
@@ -270,11 +245,9 @@ class CorpusProcessor:
         logger.info(f"📁 Encontrados {total_files} archivos para procesar")
         logger.info(f"📍 Carpeta: {self.corpus_path.absolute()}")
         
-        # Procesar cada archivo con barra de progreso
         with tqdm(total=total_files, desc="Procesando discursos", unit="archivo") as pbar:
             for idx, filepath in enumerate(txt_files):
                 try:
-                    # Procesar archivo
                     documento = self.process_file(filepath)
                     
                     if documento is None:
@@ -282,13 +255,10 @@ class CorpusProcessor:
                         pbar.update(1)
                         continue
                     
-                    # Insertar en MongoDB con write concern majority
-                    # ESTE ES EL CÓDIGO CORREGIDO
                     result = self.collection.with_options(write_concern=WriteConcern(w="majority", wtimeout=5000)).insert_one(documento)
                     
                     self.stats['procesados'] += 1
-                    
-                    # Actualizar barra de progreso
+
                     pbar.set_postfix({
                         'Procesados': self.stats['procesados'],
                         'Errores': self.stats['errores'],
@@ -309,11 +279,9 @@ class CorpusProcessor:
                 
                 pbar.update(1)
                 
-                # Pequeña pausa cada 50 documentos para no saturar
                 if (idx + 1) % 50 == 0:
                     time.sleep(0.1)
         
-        # Mostrar resumen
         self._print_summary()
     
     def _print_summary(self):
@@ -331,11 +299,10 @@ class CorpusProcessor:
         print(f"📦 Total documentos en la colección: {self.collection.count_documents({})}")
         print("="*60)
         
-        # Mostrar errores si los hay
         if self.stats['archivos_error']:
             print("\n⚠️  ARCHIVOS CON ERRORES:")
             print("-"*60)
-            for error_info in self.stats['archivos_error'][:5]:  # Mostrar máximo 5
+            for error_info in self.stats['archivos_error'][:5]: 
                 print(f"   • {error_info['archivo']}: {error_info['error']}")
             if len(self.stats['archivos_error']) > 5:
                 print(f"   ... y {len(self.stats['archivos_error']) - 5} errores más")
@@ -349,15 +316,13 @@ class CorpusProcessor:
         logger.info("🔍 VALIDACIÓN DE LA COLECCIÓN")
         logger.info("="*60)
         
-        # 1. Verificar que hay documentos
         total_docs = self.collection.count_documents({})
         logger.info(f"📊 Total de documentos en la colección: {total_docs}")
         
         if total_docs == 0:
             logger.warning("⚠️  La colección está vacía")
             return False
-        
-        # 2. Verificar estructura de documentos
+
         sample = self.collection.find_one()
         if sample:
             logger.info("\n✅ Estructura del documento de muestra:")
@@ -366,7 +331,6 @@ class CorpusProcessor:
             logger.info(f"   - Dimensión del embedding: {len(sample['embedding'])}")
             logger.info(f"   - Primeras palabras: {' '.join(sample['texto'].split()[:10])}...")
         
-        # 3. Verificar consistencia de embeddings
         logger.info("\n📐 Verificando consistencia de embeddings...")
         pipeline = [
             {"$project": {
@@ -387,7 +351,6 @@ class CorpusProcessor:
             for size in sizes:
                 logger.warning(f"   - {size['count']} documentos con {size['_id']} dimensiones")
         
-        # 4. Verificar campos requeridos
         logger.info("\n🔎 Verificando campos requeridos...")
         docs_sin_texto = self.collection.count_documents({"texto": {"$exists": False}})
         docs_sin_embedding = self.collection.count_documents({"embedding": {"$exists": False}})
@@ -400,14 +363,12 @@ class CorpusProcessor:
             if docs_sin_embedding > 0:
                 logger.warning(f"⚠️  {docs_sin_embedding} documentos sin campo 'embedding'")
         
-        # 5. Verificar replicación
         logger.info("\n🔧 Verificando estado del Replica Set...")
         try:
             status = self.client.admin.command('replSetGetStatus')
             logger.info(f"✅ Replica Set '{status['set']}' activo")
             logger.info(f"   - Miembros: {len(status['members'])}")
             
-            # Verificar que hay un primario
             primary_count = sum(1 for m in status['members'] if m['stateStr'] == 'PRIMARY')
             if primary_count == 1:
                 logger.info("   - ✅ Primario activo")
@@ -428,11 +389,9 @@ class CorpusProcessor:
         logger.info("\n📇 Creando índices para optimización...")
         
         try:
-            # Índice para el campo de texto (útil para búsquedas de texto)
             self.collection.create_index([("texto", "text")], name="text_index")
             logger.info("✅ Índice de texto creado")
             
-            # Índice para consultas por tamaño de embedding (validación)
             self.collection.create_index("embedding", name="embedding_index", sparse=True)
             logger.info("✅ Índice de embedding creado")
             
@@ -448,16 +407,13 @@ class CorpusProcessor:
 
 def main():
     """Función principal del script"""
-    # Banner inicial
     print("\n" + "🌟"*30)
     print("LABORATORIO 2 - REQUISITO 2")
     print("Preprocesamiento y Vectorización del Corpus")
     print("🌟"*30 + "\n")
     
-    # Configuración
     CORPUS_PATH = "./DiscursosOriginales"
     
-    # Verificar que existe la carpeta del corpus
     if not os.path.exists(CORPUS_PATH):
         print(f"❌ Error: No se encuentra la carpeta '{CORPUS_PATH}'")
         print("\n📝 Instrucciones:")
@@ -467,19 +423,14 @@ def main():
         return 1
     
     try:
-        # Crear procesador
         processor = CorpusProcessor(CORPUS_PATH)
         
-        # Procesar el corpus
         processor.process_corpus()
         
-        # Validar resultados
         processor.validate_collection()
         
-        # Crear índices adicionales
         processor.create_indexes()
-        
-        # Cerrar conexión
+
         processor.close()
         
         print("\n✅ ¡Procesamiento completado exitosamente!")
