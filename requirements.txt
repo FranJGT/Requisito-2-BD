@@ -1,0 +1,18 @@
+# Requisito 2 - Dependencias Python
+# Actualizado para Python 3.8+
+
+# Cliente MongoDB
+pymongo==4.7.2
+
+# Procesamiento de embeddings
+sentence-transformers==3.0.1
+torch>=2.0.0,<2.4.0
+transformers>=4.40.0,<5.0.0
+
+# Utilidades
+numpy==1.24.4
+tqdm==4.66.4
+
+# Opcional pero recomendado para mejor rendimiento
+# accelerate==0.31.0
+# scipy==1.11.4
