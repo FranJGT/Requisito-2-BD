@@ -205,13 +205,12 @@ pip install -r requirements.txt
 
 ## 📈 Métricas de Rendimiento
 
-| Métrica | Valor Típico | Notas |
-|---------|--------------|-------|
-| Documentos procesados | 679/680 | 1 duplicado es normal |
-| Tiempo total | 30-60 seg | Depende del hardware |
-| Velocidad | 10-20 docs/seg | Sin GPU |
-| Tamaño embedding | 384 dims | Fijo por el modelo |
-| Uso de RAM | ~2-3 GB | Durante procesamiento |
+| Métrica | Valor Típico |
+|---------|--------------|
+| Documentos procesados | 679/680 |
+| Tiempo total | 30-60 seg |
+| Velocidad | 10-20 docs/seg |
+| Tamaño embedding | 384 dims |
 
 ## ✅ Criterios de Éxito
 
